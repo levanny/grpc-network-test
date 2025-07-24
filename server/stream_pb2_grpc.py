@@ -34,8 +34,8 @@ class StreamServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.StreamMessages = channel.stream_stream(
-                '/stream.StreamService/StreamMessages',
+        self.streamMessages = channel.stream_stream(
+                '/stream.StreamService/streamMessages',
                 request_serializer=stream__pb2.StreamMessage.SerializeToString,
                 response_deserializer=stream__pb2.StreamMessage.FromString,
                 _registered_method=True)
@@ -44,7 +44,7 @@ class StreamServiceStub(object):
 class StreamServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def StreamMessages(self, request_iterator, context):
+    def streamMessages(self, request_iterator, context):
         """Bidirectional streaming
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -54,8 +54,8 @@ class StreamServiceServicer(object):
 
 def add_StreamServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'StreamMessages': grpc.stream_stream_rpc_method_handler(
-                    servicer.StreamMessages,
+            'streamMessages': grpc.stream_stream_rpc_method_handler(
+                    servicer.streamMessages,
                     request_deserializer=stream__pb2.StreamMessage.FromString,
                     response_serializer=stream__pb2.StreamMessage.SerializeToString,
             ),
@@ -71,7 +71,7 @@ class StreamService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def StreamMessages(request_iterator,
+    def streamMessages(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -84,7 +84,7 @@ class StreamService(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/stream.StreamService/StreamMessages',
+            '/stream.StreamService/streamMessages',
             stream__pb2.StreamMessage.SerializeToString,
             stream__pb2.StreamMessage.FromString,
             options,

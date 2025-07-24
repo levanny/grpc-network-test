@@ -10,5 +10,5 @@ message StreamMessage {
 
 service StreamService {
   // Bidirectional streaming
-  rpc StreamMessages (stream StreamMessage) returns (stream StreamMessage);
+  rpc streamMessages (stream StreamMessage) returns (stream StreamMessage);
 }

@@ -27,7 +27,7 @@ class StreamServiceServicer(stream_pb2_grpc.StreamServiceServicer):
     def __init__(self):
         super().__init__()
 
-    def streamMessage (self, request_iterator, context):
+    def streamMessages (self, request_iterator, context):
         CONNECTIONS_OPEN.inc()
         start = time.time()
         seq = 0

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cstream.proto\x12\x06stream\"G\n\rStreamMessage\x12\x12\n\nseq_number\x18\x01 \x01(\x03\x12\x11\n\ttimestamp\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\t2S\n\rStreamService\x12\x42\n\x0eStreamMessages\x12\x15.stream.StreamMessage\x1a\x15.stream.StreamMessage(\x01\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cstream.proto\x12\x06stream\"G\n\rStreamMessage\x12\x12\n\nseq_number\x18\x01 \x01(\x03\x12\x11\n\ttimestamp\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\t2S\n\rStreamService\x12\x42\n\x0estreamMessages\x12\x15.stream.StreamMessage\x1a\x15.stream.StreamMessage(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
