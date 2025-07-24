@@ -2,10 +2,13 @@ syntax = "proto3";
 
 package stream;
 
-service StreamService {
-  rpc Chat (stream ChatMessage) returns (stream ChatMessage);
+message StreamMessage {
+  int64 seq_number = 1;
+  string timestamp = 2;
+  string payload = 3;
 }
 
-message ChatMessage {
-  string msg = 1;
+service StreamService {
+  // Bidirectional streaming
+  rpc StreamMessages (stream StreamMessage) returns (stream StreamMessage);
 }
