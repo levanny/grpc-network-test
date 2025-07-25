@@ -61,7 +61,7 @@ def run():
     # Start Prometheus metrics on port 8001
     start_http_server(8001)
 
-    with grpc.insecure_channel("localhost:50051") as channel:
+    with grpc.insecure_channel(SERVER_ADDR) as channel:
         stub = stream_pb2_grpc.StreamServiceStub(channel)
         responses = None
         try:

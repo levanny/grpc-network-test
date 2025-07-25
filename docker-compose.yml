@@ -3,12 +3,11 @@ version: "3.9"
 services:
   server:
     build:
-      context: ./server
-    container_name: grpc-server
-    command: ["python", "server.py"]
+      context: .
+    container_name: grpc-network-test-server
+    command: ["python", "-m",  "server.server"]
     environment:
       PYTHONUNBUFFERED: "1"
-      PYTHONPATH: "/app"
     ports:
       - "50051:50051"
       - "8000:8000"
@@ -16,13 +15,12 @@ services:
 
   client:
     build:
-      context: ./client
-    container_name: grpc-client
-    command: ["python", "client.py"]
+      context: .
+    container_name: grpc-network-test-client
+    command: ["python", "-m",  "client.client"]
     environment:
       PYTHONUNBUFFERED: "1"
-      PYTHONPATH: "/app"
-      SERVER_ADDR: "grpc-server:50051"
+      SERVER_ADDR: "grpc-network-test-server:50051"
     depends_on:
       - server
     ports:
