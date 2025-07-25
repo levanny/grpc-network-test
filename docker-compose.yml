@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  server:
+    build:
+      context: ./server
+    container_name: grpc-server
+    command: ["python", "server.py"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    ports:
+      - "50051:50051"
+      - "8000:8000"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+    container_name: grpc-client
+    command: ["python", "client.py"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+      SERVER_ADDR: "grpc-server:50051"
+    depends_on:
+      - server
+    ports:
+      - "8001:8001"
+    restart: unless-stopped

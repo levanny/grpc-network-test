@@ -1,6 +1,11 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
+
 WORKDIR /app
-COPY ./server/requirements.txt /app/requirements.txt
+
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . /app
-CMD ["python", "server/server.py"]
+
+COPY client.py .
+COPY proto/ ./proto/
+
+CMD ["python", "client.py"]

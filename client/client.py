@@ -4,28 +4,34 @@ import time
 import signal
 import threading
 from datetime import datetime, timezone
+import os
 
 import grpc
-from prometheus_client import start_http_server, Gauge
+from prometheus_client import start_http_server, Gauge, Counter
 
-import stream_pb2
-import stream_pb2_grpc
+import stream_pb2, stream_pb2_grpc
+
 
 # Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
+stream_start = 30
+stream_end = 300
+break_time = 10
+
+SERVER_ADDR = os.getenv("SERVER_ADDR", "localhost:50051")
 
 #Metrics
-MESSAGES_SENT = Gauge("client_messages_sent_total", "Total messages sent by client")
-MESSAGES_RECEIVED = Gauge("client_messages_received_total", "Total messages received by client")
-ERRORS = Gauge("client_errors_total", "Total client errors")
+MESSAGES_SENT = Counter("client_messages_sent_total", "Total messages sent by client")
+MESSAGES_RECEIVED = Counter("client_messages_received_total", "Total messages received by client")
+ERRORS = Counter("client_errors_total", "Total client errors")
 
 STOP = threading.Event()
 
 def handle_signal(signum,frame):
-    logging.info(f"Received signal {signum}, shutting down grafecully...")
+    logging.info(f"Received signal {signum}, shutting down gracefully...")
     STOP.set()
 
 signal.signal(signal.SIGINT, handle_signal)
@@ -34,15 +40,11 @@ signal.signal(signal.SIGTERM, handle_signal)
 def now_timestamp():
     return datetime.now(timezone.utc).isoformat()
 
-global duration
-
 def generate_messages(duration: int):
     """Generate messages every second for the given duration (seconds)."""
     seq = 0
     end_at = time.time() + duration
-    duration = random.randint(1, 10)
-    start_time = time.time()
-    while not STOP.is_set() and time.time() <end_at:
+    while not STOP.is_set() and time.time() < end_at:
         seq += 1
         msg = stream_pb2.StreamMessage(
             timestamp=now_timestamp(),  # We can leave None or use current time
@@ -60,10 +62,7 @@ def run():
 
     with grpc.insecure_channel("localhost:50051") as channel:
         stub = stream_pb2_grpc.StreamServiceStub(channel)
-        break_time = 3
         responses = None
-        stream_start = 30
-        stream_end = 300
         try:
             while not STOP.is_set():
                 duration = random.randint(stream_start, stream_end)

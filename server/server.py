@@ -4,24 +4,22 @@ from concurrent import futures
 
 import grpc
 
-from prometheus_client import start_http_server, Gauge, Histogram
+from prometheus_client import start_http_server, Gauge, Histogram, Counter
 
-import stream_pb2
-import stream_pb2_grpc
+import stream_pb2, stream_pb2_grpc
+
+server.add_insecure_port('[::]:50051')
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-MESSAGES_RECEIVED = Gauge('messages_received_total', 'Total messages received')
-MESSAGES_SENT = Gauge('messages_sent_total', 'Total messages sent')
-CONNECTIONS_OPEN = Gauge('connections_open_total', 'Total connections Opened')
-ERRORS = Gauge('errors_total', 'Total errors')
-CONNECTION_DURATION = Histogram(
-    "connection_duration_seconds",
-    "Duration of a streaming connection in seconds"
-)
+MESSAGES_RECEIVED = Counter("messages_received_total", "Total messages received")
+MESSAGES_SENT = Counter("messages_sent_total", "Total messages sent")
+CONNECTIONS_OPEN = Gauge("connections_open", "Currently open streaming connections")
+ERRORS = Counter("errors_total", "Total errors")
+CONNECTION_DURATION = Histogram("connection_duration_seconds", "Duration of a streaming connection in seconds")
 
 class StreamServiceServicer(stream_pb2_grpc.StreamServiceServicer):
     def __init__(self):
