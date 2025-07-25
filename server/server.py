@@ -6,7 +6,7 @@ import grpc
 
 from prometheus_client import start_http_server, Gauge, Histogram, Counter
 
-import stream_pb2, stream_pb2_grpc
+from gen import stream_pb2, stream_pb2_grpc
 
 server.add_insecure_port('[::]:50051')
 

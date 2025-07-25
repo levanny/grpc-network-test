@@ -13,11 +13,14 @@ pip install -r server/requirements.txt
 ## Generate gRPC code
 
 ```bash
+mkdir gen
+touch gen/__init__.py
+```
 python -m grpc_tools.protoc \
   -I proto \
   --python_out=. \
   --grpc_python_out=. \
-  proto/stream.proto
+  proto/gen/stream.proto
 ```
 
 This will create `proto/stream_pb2.py` and `proto/stream_pb2_grpc.py`.
