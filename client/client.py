@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 stream_start = 30
 stream_end = 300
-break_time = 10
+break_time_seconds = 10
 
 SERVER_ADDR = os.getenv("SERVER_ADDR", "localhost:50051")
 
@@ -55,17 +55,17 @@ def generate_messages(duration: int):
         logging.info(f"Sending message: seq={seq} payload={msg.payload}")
         MESSAGES_SENT.inc()
         yield msg
-        time.sleep(1)
 
 def run():
     # Start Prometheus metrics on port 8001
     start_http_server(8001)
 
-    with grpc.insecure_channel(SERVER_ADDR) as channel:
-        stub = stream_pb2_grpc.StreamServiceStub(channel)
-        responses = None
-        try:
-            while not STOP.is_set():
+
+    responses = None
+    try:
+        while not STOP.is_set():
+            with grpc.insecure_channel(SERVER_ADDR) as channel:
+                stub = stream_pb2_grpc.StreamServiceStub(channel)
                 duration = random.randint(stream_start, stream_end)
                 logging.info(f"Starting new message stream for {duration} seconds")
                 responses = stub.streamMessages(generate_messages(duration))
@@ -77,26 +77,26 @@ def run():
                 if STOP.is_set():
                     break
 
-                logging.info(f"Pausing {break_time} seconds before next stream... ")
-                for _ in range(break_time * 10):
+                logging.info(f"Pausing {break_time_seconds} seconds before next stream... ")
+                for _ in range(break_time_seconds):
                     if STOP.is_set():
                         break
-                    time.sleep(0.1)
+                    time.sleep(1)
 
-        except grpc.RpcError as e:
-            if e.code() != grpc.StatusCode.CANCELLED:
-                ERRORS.inc()
-                logging.error(f"Client error: {e}")
-        except Exception:
+    except grpc.RpcError as e:
+        if e.code() != grpc.StatusCode.CANCELLED:
             ERRORS.inc()
-            logging.exception("Client Error")
-        finally:
-            if responses is not None:
-                try:
-                    responses.cancel()
-                except Exception:
-                    pass
-            logging.info("Client shutdown complete!")
+            logging.error(f"Client error: {e}")
+    except Exception:
+        ERRORS.inc()
+        logging.exception("Client Error")
+    finally:
+        if responses is not None:
+            try:
+                responses.cancel()
+            except Exception:
+                pass
+        logging.info("Client shutdown complete!")
 
 if __name__ == "__main__":
     run()
