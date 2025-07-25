@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  server:
+    build:
+      context: .
+    container_name: grpc-network-test-server
+    command: ["python", "-m",  "server.server"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "50051:50051"
+      - "8000:8000"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+    container_name: grpc-network-test-client
+    command: ["python", "-m",  "client.client"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SERVER_ADDR: "grpc-network-test-server:50051"
+    depends_on:
+      - server
+    ports:
+      - "8001:8001"
+    restart: unless-stopped

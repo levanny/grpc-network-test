@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package stream;
+package gen;;
 
 message StreamMessage {
   int64 seq_number = 1;

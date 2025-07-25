@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-import stream_pb2 as stream__pb2
+from gen import stream_pb2 as gen_dot_stream__pb2
 
-GRPC_GENERATED_VERSION = '1.73.1'
+GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in stream_pb2_grpc.py depends on'
+        + f' but the generated code in gen/stream_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -35,9 +35,9 @@ class StreamServiceStub(object):
             channel: A grpc.Channel.
         """
         self.streamMessages = channel.stream_stream(
-                '/stream.StreamService/streamMessages',
-                request_serializer=stream__pb2.StreamMessage.SerializeToString,
-                response_deserializer=stream__pb2.StreamMessage.FromString,
+                '/gen.StreamService/streamMessages',
+                request_serializer=gen_dot_stream__pb2.StreamMessage.SerializeToString,
+                response_deserializer=gen_dot_stream__pb2.StreamMessage.FromString,
                 _registered_method=True)
 
 
@@ -56,14 +56,14 @@ def add_StreamServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'streamMessages': grpc.stream_stream_rpc_method_handler(
                     servicer.streamMessages,
-                    request_deserializer=stream__pb2.StreamMessage.FromString,
-                    response_serializer=stream__pb2.StreamMessage.SerializeToString,
+                    request_deserializer=gen_dot_stream__pb2.StreamMessage.FromString,
+                    response_serializer=gen_dot_stream__pb2.StreamMessage.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'stream.StreamService', rpc_method_handlers)
+            'gen.StreamService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('stream.StreamService', rpc_method_handlers)
+    server.add_registered_method_handlers('gen.StreamService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -84,9 +84,9 @@ class StreamService(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/stream.StreamService/streamMessages',
-            stream__pb2.StreamMessage.SerializeToString,
-            stream__pb2.StreamMessage.FromString,
+            '/gen.StreamService/streamMessages',
+            gen_dot_stream__pb2.StreamMessage.SerializeToString,
+            gen_dot_stream__pb2.StreamMessage.FromString,
             options,
             channel_credentials,
             insecure,
