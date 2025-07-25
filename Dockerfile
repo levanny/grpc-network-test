@@ -5,7 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY client.py .
-COPY proto/ ./proto/
+COPY client/ ./client/
+COPY server/ ./server/
+COPY gen/ ./gen/
 
-CMD ["python", "client.py"]
+CMD ["python", "-m",  "server.server"]
