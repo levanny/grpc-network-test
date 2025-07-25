@@ -10,3 +10,4 @@ COPY server/ ./server/
 COPY gen/ ./gen/
 
 CMD ["python", "-m",  "server.server"]
+
