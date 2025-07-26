@@ -1,11 +1,12 @@
 syntax = "proto3";
 
-package gen;;
+package gen;
 
 message StreamMessage {
   int64 seq_number = 1;
   string timestamp = 2;
   string payload = 3;
+  bytes payload_bytes = 4;
 }
 
 service StreamService {
