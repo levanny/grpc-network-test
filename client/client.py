@@ -76,7 +76,11 @@ def run():
 
                 for response in responses:
                     MESSAGES_RECEIVED.inc()
-                    logging.info(f"Received from server: seq={response.seq_number} payload={response.payload}")
+                    sample_bytes = response.payload_bytes[:10] if response.payload_bytes else b""
+                    logging.info(
+                        f"Received from server: seq={response.seq_number} payload={response.payload} "
+                        f"bytes_sample={sample_bytes.hex()}"
+                    )
 
                 if STOP.is_set():
                     break
