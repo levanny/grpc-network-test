@@ -5,6 +5,7 @@ import signal
 import threading
 from datetime import datetime, timezone
 import os
+import multiprocessing as mp
 
 import grpc
 from prometheus_client import start_http_server, Counter
@@ -66,52 +67,73 @@ def generate_messages(duration: int):
         yield msg
 
 
-def run():
-    # Start Prometheus metrics on port 8001
-    start_http_server(8001)
-    responses = None
-    try:
-        while not STOP.is_set():
-            with grpc.insecure_channel(SERVER_ADDR) as channel:
-                stub = stream_pb2_grpc.StreamServiceStub(channel)
-                duration = random.randint(STREAM_START, STREAM_END)
-                logging.info(f"Starting new message stream for {duration} seconds")
-                responses = stub.streamMessages(generate_messages(duration))
+def run(metrics_port: int = 8001):
+    # Start Prometheus metrics on a (possibly unique) port
+    start_http_server(metrics_port)
 
-                for response in responses:
-                    MESSAGES_RECEIVED.inc()
-                    sample_bytes = response.payload_bytes[:10] if response.payload_bytes else b""
-                    logging.info(
-                        f"Received from server: seq={response.seq_number} payload={response.payload} "
-                        f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
-                        f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
-                    )
+    while not STOP.is_set():
+        channel = None
+        stub = None
+        responses = None
 
+        try:
+            # Open a fresh connection
+            channel = grpc.insecure_channel(SERVER_ADDR)
+            stub = stream_pb2_grpc.StreamServiceStub(channel)
+
+            duration = random.randint(STREAM_START, STREAM_END)
+            logging.info(f"Starting new message stream for {duration} seconds")
+
+            responses = stub.streamMessages(generate_messages(duration))
+
+            for response in responses:
+                MESSAGES_RECEIVED.inc()
+                logging.info(
+                    f"Received from server: seq={response.seq_number} payload={response.payload} "
+                    f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
+                    f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
+                )
+
+        except grpc.RpcError as e:
+            if e.code() != grpc.StatusCode.CANCELLED:
+                ERRORS.inc()
+                logging.error(f"Client error: {e}")
+        except Exception:
+            ERRORS.inc()
+            logging.exception("Client Error")
+        finally:
+            # Explicitly cancel the stream & close the channel
+            if responses is not None:
+                try:
+                    responses.cancel()
+                except Exception:
+                    pass
+            if channel is not None:
+                try:
+                    channel.close()
+                except Exception:
+                    pass
+
+            if STOP.is_set():
+                break
+
+            logging.info(f"Closed connection. Waiting {BREAK_TIME_SECONDS} seconds before reopening...")
+            for _ in range(BREAK_TIME_SECONDS):
                 if STOP.is_set():
                     break
+                time.sleep(1)
 
-                logging.info(f"Pausing {BREAK_TIME_SECONDS} seconds before next stream... ")
-                for _ in range(BREAK_TIME_SECONDS):
-                    if STOP.is_set():
-                        break
-                    time.sleep(1)
+    logging.info("Client shutdown complete!")
 
-    except grpc.RpcError as e:
-        if e.code() != grpc.StatusCode.CANCELLED:
-            ERRORS.inc()
-            logging.error(f"Client error: {e}")
-
-    except Exception:
-        ERRORS.inc()
-        logging.exception("Client Error")
-
-    finally:
-        if responses is not None:
-            try:
-                responses.cancel()
-            except Exception:
-                pass
-        logging.info("Client shutdown complete!")
 
 if __name__ == "__main__":
-    run()
+    # Spawn 5 parallel clients, each with its own Prometheus port to avoid clashes
+    procs = []
+    base_port = 8001
+    for i in range(5):
+        p = mp.Process(target=run, kwargs={"metrics_port": base_port + i})
+        p.start()
+        procs.append(p)
+
+    for p in procs:
+        p.join()
