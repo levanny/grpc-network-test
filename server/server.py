@@ -35,6 +35,7 @@ class StreamServiceServicer(stream_pb2_grpc.StreamServiceServicer):
                     timestamp=msg.timestamp,
                     seq_number=msg.seq_number,
                     payload=f"Echo: {msg.payload}",
+                    payload_bytes=msg.payload_bytes,  # echo the bytes back
                 )
                 MESSAGES_SENT.inc()
                 logger.info(f"Sending message: seq={response.seq_number} payload={response.payload}")
