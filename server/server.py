@@ -29,7 +29,11 @@ class StreamServiceServicer(stream_pb2_grpc.StreamServiceServicer):
         try:
             for msg in request_iterator:
                 MESSAGES_RECEIVED.inc()
-                logger.info(f"Received message: seq={msg.seq_number} payload={msg.payload}")
+                logging.info(
+                    f"Received message: seq={msg.seq_number} payload={msg.payload} "
+                    f"bytes_sample={(msg.payload_bytes[:10].hex() if msg.payload_bytes else 'None')} "
+                    f"(length={len(msg.payload_bytes) if msg.payload_bytes else 0})"
+                )
 
                 response = stream_pb2.StreamMessage(
                     timestamp=msg.timestamp,
@@ -38,7 +42,12 @@ class StreamServiceServicer(stream_pb2_grpc.StreamServiceServicer):
                     payload_bytes=msg.payload_bytes,  # echo the bytes back
                 )
                 MESSAGES_SENT.inc()
-                logger.info(f"Sending message: seq={response.seq_number} payload={response.payload}")
+
+                logging.info(
+                    f"Sending message: seq={response.seq_number} payload={response.payload} "
+                    f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
+                    f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
+                )
 
                 yield response
 
