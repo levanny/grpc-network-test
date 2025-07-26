@@ -52,9 +52,10 @@ def generate_messages(duration: int):
     while not STOP.is_set() and time.time() < end_at:
         seq += 1
         msg = stream_pb2.StreamMessage(
-            timestamp=now_timestamp(),  # We can leave None or use current time
+            timestamp=now_timestamp(),
             seq_number=seq,
-            payload=f"Hello {seq}"
+            payload=f"Hello {seq}",
+            payload_bytes=os.urandom(1024),
         )
         logging.info(f"Sending message: seq={seq} payload={msg.payload}")
         MESSAGES_SENT.inc()
