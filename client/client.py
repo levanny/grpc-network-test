@@ -57,7 +57,11 @@ def generate_messages(duration: int):
             payload=f"Hello {seq}",
             payload_bytes=os.urandom(1024),
         )
-        logging.info(f"Sending message: seq={seq} payload={msg.payload}")
+        logging.info(
+            f"Sending message: seq={seq} payload={msg.payload} "
+            f"bytes_sample={(msg.payload_bytes[:10].hex() if msg.payload_bytes else 'None')} "
+            f"(length={len(msg.payload_bytes) if msg.payload_bytes else 0})"
+        )
         MESSAGES_SENT.inc()
         yield msg
 
@@ -79,7 +83,8 @@ def run():
                     sample_bytes = response.payload_bytes[:10] if response.payload_bytes else b""
                     logging.info(
                         f"Received from server: seq={response.seq_number} payload={response.payload} "
-                        f"bytes_sample={sample_bytes.hex()}"
+                        f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
+                        f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
                     )
 
                 if STOP.is_set():
