@@ -5,7 +5,6 @@ import signal
 import threading
 from datetime import datetime, timezone
 import os
-import multiprocessing as mp
 
 import grpc
 from prometheus_client import start_http_server, Counter
@@ -21,6 +20,7 @@ logging.basicConfig(
 STREAM_START = 30
 STREAM_END = 300
 BREAK_TIME_SECONDS = 10
+NUM_THREADS = 5
 
 SERVER_ADDR = os.getenv("SERVER_ADDR", "localhost:50051")
 
@@ -67,73 +67,59 @@ def generate_messages(duration: int):
         yield msg
 
 
-def run(metrics_port: int = 8001):
-    # Start Prometheus metrics on a (possibly unique) port
-    start_http_server(metrics_port)
-
+def client_thread(thread_id):
+    # Function run by each thread to send and receive messages.
     while not STOP.is_set():
-        channel = None
-        stub = None
         responses = None
-
         try:
             # Open a fresh connection
-            channel = grpc.insecure_channel(SERVER_ADDR)
-            stub = stream_pb2_grpc.StreamServiceStub(channel)
+            with grpc.insecure_channel(SERVER_ADDR) as channel:
+                stub = stream_pb2_grpc.StreamServiceStub(channel)
+                #Send a batch of messages for a random duration
+                duration = random.randint(STREAM_START, STREAM_END)
+                logging.info(f"[Thread-{thread_id}] Starting stream for {duration}s")
 
-            duration = random.randint(STREAM_START, STREAM_END)
-            logging.info(f"Starting new message stream for {duration} seconds")
-
-            responses = stub.streamMessages(generate_messages(duration))
-
-            for response in responses:
-                MESSAGES_RECEIVED.inc()
-                logging.info(
-                    f"Received from server: seq={response.seq_number} payload={response.payload} "
-                    f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
-                    f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
-                )
+                responses = stub.streamMessages(generate_messages(duration))
+                #Process each message
+                for response in responses:
+                    MESSAGES_RECEIVED.inc()
+                    logging.info(
+                        f"[Thread-{thread_id}] Received: seq={response.seq_number} payload={response.payload} "
+                        f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
+                        f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
+                    )
 
         except grpc.RpcError as e:
             if e.code() != grpc.StatusCode.CANCELLED:
                 ERRORS.inc()
                 logging.error(f"Client error: {e}")
+
         except Exception:
             ERRORS.inc()
-            logging.exception("Client Error")
-        finally:
-            # Explicitly cancel the stream & close the channel
-            if responses is not None:
-                try:
-                    responses.cancel()
-                except Exception:
-                    pass
-            if channel is not None:
-                try:
-                    channel.close()
-                except Exception:
-                    pass
+            logging.exception("Unexpected error in client")
 
+        if STOP.is_set():
+            break
+
+        logging.info(f"[Thread-{thread_id}] Stream ended. Reconnecting in {BREAK_TIME_SECONDS}s...")
+        for _ in range(BREAK_TIME_SECONDS):
             if STOP.is_set():
                 break
+            time.sleep(1)
+    logging.info(f"[Thread-{thread_id}] Client shutting down.")
 
-            logging.info(f"Closed connection. Waiting {BREAK_TIME_SECONDS} seconds before reopening...")
-            for _ in range(BREAK_TIME_SECONDS):
-                if STOP.is_set():
-                    break
-                time.sleep(1)
-
-    logging.info("Client shutdown complete!")
 
 
 if __name__ == "__main__":
-    # Spawn 5 parallel clients, each with its own Prometheus port to avoid clashes
-    procs = []
-    base_port = 8001
-    for i in range(5):
-        p = mp.Process(target=run, kwargs={"metrics_port": base_port + i})
-        p.start()
-        procs.append(p)
+    # Start Prometheus metrics server once
+    start_http_server(8001)
+    # Start multiple threads inside one process
+    threads = []
+    for i in range(NUM_THREADS):
+        t = threading.Thread(target=client_thread, args =(i+1,))
+        t.start()
+        threads.append(t)
 
-    for p in procs:
-        p.join()
+    for t in threads:
+        t.join()
+
