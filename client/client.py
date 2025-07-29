@@ -20,6 +20,7 @@ logging.basicConfig(
 STREAM_START = 30
 STREAM_END = 300
 BREAK_TIME_SECONDS = 10
+NUM_THREADS = 5
 
 SERVER_ADDR = os.getenv("SERVER_ADDR", "localhost:50051")
 
@@ -66,52 +67,59 @@ def generate_messages(duration: int):
         yield msg
 
 
-def run():
-    # Start Prometheus metrics on port 8001
-    start_http_server(8001)
-    responses = None
-    try:
-        while not STOP.is_set():
+def client_thread(thread_id):
+    # Function run by each thread to send and receive messages.
+    while not STOP.is_set():
+        responses = None
+        try:
+            # Open a fresh connection
             with grpc.insecure_channel(SERVER_ADDR) as channel:
                 stub = stream_pb2_grpc.StreamServiceStub(channel)
+                #Send a batch of messages for a random duration
                 duration = random.randint(STREAM_START, STREAM_END)
-                logging.info(f"Starting new message stream for {duration} seconds")
-                responses = stub.streamMessages(generate_messages(duration))
+                logging.info(f"[Thread-{thread_id}] Starting stream for {duration}s")
 
+                responses = stub.streamMessages(generate_messages(duration))
+                #Process each message
                 for response in responses:
                     MESSAGES_RECEIVED.inc()
-                    sample_bytes = response.payload_bytes[:10] if response.payload_bytes else b""
                     logging.info(
-                        f"Received from server: seq={response.seq_number} payload={response.payload} "
+                        f"[Thread-{thread_id}] Received: seq={response.seq_number} payload={response.payload} "
                         f"bytes_sample={(response.payload_bytes[:10].hex() if response.payload_bytes else 'None')} "
                         f"(length={len(response.payload_bytes) if response.payload_bytes else 0})"
                     )
 
-                if STOP.is_set():
-                    break
+        except grpc.RpcError as e:
+            if e.code() != grpc.StatusCode.CANCELLED:
+                ERRORS.inc()
+                logging.error(f"Client error: {e}")
 
-                logging.info(f"Pausing {BREAK_TIME_SECONDS} seconds before next stream... ")
-                for _ in range(BREAK_TIME_SECONDS):
-                    if STOP.is_set():
-                        break
-                    time.sleep(1)
-
-    except grpc.RpcError as e:
-        if e.code() != grpc.StatusCode.CANCELLED:
+        except Exception:
             ERRORS.inc()
-            logging.error(f"Client error: {e}")
+            logging.exception("Unexpected error in client")
 
-    except Exception:
-        ERRORS.inc()
-        logging.exception("Client Error")
+        if STOP.is_set():
+            break
 
-    finally:
-        if responses is not None:
-            try:
-                responses.cancel()
-            except Exception:
-                pass
-        logging.info("Client shutdown complete!")
+        logging.info(f"[Thread-{thread_id}] Stream ended. Reconnecting in {BREAK_TIME_SECONDS}s...")
+        for _ in range(BREAK_TIME_SECONDS):
+            if STOP.is_set():
+                break
+            time.sleep(1)
+    logging.info(f"[Thread-{thread_id}] Client shutting down.")
+
+
 
 if __name__ == "__main__":
-    run()
+    # Start Prometheus metrics server once
+    start_http_server(8001)
+    # Start multiple threads inside one process
+    threads = []
+    for i in range(NUM_THREADS):
+        t = threading.Thread(target=client_thread, args =(i+1,))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+
